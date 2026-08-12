@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title id="pageTitle">ZEROHUBUI APPS</title>
+<meta id="metaDesc" name="description" content="">
+<meta id="ogTitle" property="og:title" content="">
+<meta id="ogDesc" property="og:description" content="">
+<meta id="ogImage" property="og:image" content="">
+<link rel="stylesheet" href="assets/core.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header style="padding:16px 18px; display:flex; align-items:center; gap:14px;">
+  <a href="index.html" style="color:#fff; text-decoration:none; font-size:22px;">←</a>
+  <h1 class="aurora-text" style="font-size:18px; margin:0;">ZEROHUBUI</h1>
+</header>
+
+<main id="content" style="padding:0 18px 120px;">
+  <p style="text-align:center; color:var(--text-dim); padding:60px 0;">…</p>
+</main>
+
+<div id="dlBar" style="position:fixed; left:0; right:0; bottom:0; padding:14px 18px calc(14px + env(safe-area-inset-bottom)); background:var(--bg-1); border-top:1px solid var(--border); display:none;">
+  <button id="dlBtn" class="btn" style="width:100%;">Зеркашӣ</button>
+</div>
+
+<script src="assets/supabase-client.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const slug = params.get("slug");
+const lang = localStorage.getItem("zh_lang") || "tj";
+
+function icon(a){ return a.icon_url || "https://placehold.co/160x160/14141d/9a9aab?text=Z"; }
+
+(async function(){
+  const a = await fetchAppBySlug(slug);
+  if (!a){
+    document.getElementById("content").innerHTML = `<p style="text-align:center; color:var(--text-dim); padding:60px 0;">Ёфт нашуд</p>`;
+    return;
+  }
+  const name = lang === "tj" ? a.name_tj : (a.name_ru || a.name_tj);
+  const desc = lang === "tj" ? a.description_tj : (a.description_ru || a.description_tj);
+
+  document.getElementById("pageTitle").textContent = `${name} — ZEROHUBUI APPS`;
+  document.getElementById("metaDesc").content = a.seo_description || desc || "";
+  document.getElementById("ogTitle").content = name;
+  document.getElementById("ogDesc").content = desc || "";
+  document.getElementById("ogImage").content = icon(a);
+
+  const shots = (a.screenshots||[]).map(s=>`<img src="${s}" style="width:150px; height:280px; object-fit:cover; border-radius:14px; margin-right:10px; flex-shrink:0;" loading="lazy">`).join("");
+
+  document.getElementById("content").innerHTML = `
+    <div style="display:flex; gap:16px; align-items:center; padding:20px 0;">
+      <img src="${icon(a)}" style="width:88px; height:88px; border-radius:22px;">
+      <div>
+        <h2 style="margin:0 0 6px; font-size:20px;">${name}</h2>
+        <div style="color:var(--text-dim); font-size:13px;">${a.developer||""} • v${a.version||"-"}</div>
+        <div style="color:var(--text-dim); font-size:13px;">⭐ ${a.rating||0} • ${(a.downloads_count||0).toLocaleString()} загрузок</div>
+      </div>
+    </div>
+
+    ${shots ? `<div style="display:flex; overflow-x:auto; padding:6px 0 16px;">${shots}</div>` : ""}
+
+    ${a.trailer_embed ? `<div class="panel" style="padding:8px; margin-bottom:16px; overflow:hidden;">${a.trailer_embed}</div>` : ""}
+
+    <div class="panel" style="padding:16px; margin-bottom:16px;">
+      <h3 class="glow-text" style="font-size:15px; margin:0 0 8px;">Тавсиф</h3>
+      <p style="color:var(--text-dim); font-size:14px; line-height:1.6; margin:0;">${desc||""}</p>
+    </div>
+
+    <div class="panel" style="padding:16px; display:flex; flex-wrap:wrap; gap:10px 20px; font-size:13px; color:var(--text-dim);">
+      <span>📦 ${a.size_mb||"-"} MB</span>
+      <span>🤖 Android ${a.min_android||"-"}+</span>
+      <span>🏷️ ${a.category||"-"}</span>
+    </div>
+
+    ${a.changelog ? `<div class="panel" style="padding:16px; margin-top:16px;">
+      <h3 class="glow-text" style="font-size:15px; margin:0 0 8px;">Тағйирот</h3>
+      <p style="color:var(--text-dim); font-size:13px; white-space:pre-line; margin:0;">${a.changelog}</p>
+    </div>` : ""}
+  `;
+
+  document.getElementById("dlBar").style.display = "block";
+  document.getElementById("dlBtn").onclick = async ()=>{
+    await incrementDownload(a.id, a.downloads_count);
+    window.open(a.download_url, "_blank");
+  };
+})();
+</script>
+</body>
+</html>
