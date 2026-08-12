@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZEROHUBUI — Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="../frontend/assets/core.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .blob{
+    position:fixed; top:50%; left:50%; width:340px; height:340px;
+    transform:translate(-50%,-70%);
+    background:
+      radial-gradient(circle at 30% 30%, #c084fc 0%, transparent 55%),
+      radial-gradient(circle at 70% 60%, #22d3ee 0%, transparent 55%),
+      radial-gradient(circle at 50% 80%, #7c3aed 0%, transparent 60%);
+    filter:blur(40px) saturate(1.4);
+    border-radius:42% 58% 60% 40% / 45% 40% 60% 55%;
+    animation:blobMorph 10s ease-in-out infinite;
+    opacity:.75; z-index:0; pointer-events:none;
+  }
+  @keyframes blobMorph{
+    0%,100%{border-radius:42% 58% 60% 40% / 45% 40% 60% 55%; transform:translate(-50%,-70%) rotate(0deg);}
+    50%{border-radius:60% 40% 45% 55% / 55% 60% 40% 45%; transform:translate(-50%,-70%) rotate(15deg);}
+  }
+  .login-wrap{position:relative; z-index:2; max-width:400px; margin:0 auto; padding:60px 24px;}
+  .login-title{font-size:34px; text-align:center; margin:0 0 6px;}
+  .login-sub{text-align:center; color:var(--text-dim); font-size:13px; margin:0 0 32px;}
+  .field-label{font-size:12px; color:var(--text-dim); margin:0 0 6px; display:block; font-weight:700;}
+  .err{color:#f87171; font-size:13px; text-align:center; margin-top:10px; min-height:18px;}
+</style>
+</head>
+<body>
+
+<div class="blob"></div>
+<div class="z3d-wrap z3d-tl" style="opacity:.22;"><div class="z3d"><span>Z</span><span>Z</span><span>Z</span><span>Z</span><span>Z</span><span>Z</span></div></div>
+
+<!-- LOGIN VIEW -->
+<div id="loginView" class="login-wrap">
+  <h1 class="login-title glow-text">ZEROHUBUI</h1>
+  <p class="login-sub">Панели идоракунӣ · Танҳо барои соҳиб</p>
+  <div class="panel" style="padding:26px;">
+    <label class="field-label">Email</label>
+    <input id="email" class="input" type="email" placeholder="you@email.com" style="margin-bottom:16px;">
+    <label class="field-label">Парол</label>
+    <input id="password" class="input" type="password" placeholder="••••••••" style="margin-bottom:20px;">
+    <button class="btn" style="width:100%;" onclick="login()">Воридшавӣ</button>
+    <p class="err" id="loginErr"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD VIEW -->
+<div id="dashView" style="display:none; position:relative; z-index:2; padding:20px 16px 100px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+    <h1 class="aurora-text" style="font-size:22px; margin:0;">ZEROHUBUI Admin</h1>
+    <div style="display:flex; gap:8px;">
+      <button class="chip" onclick="toggleAdminLang()" id="adminLangBtn">RU</button>
+      <button class="chip" onclick="logout()">⎋</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div id="statsRow" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:18px;"></div>
+
+  <!-- TABS -->
+  <div style="display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;">
+    <button class="chip active" data-sec="all" onclick="filterSection('all')">Ҳама</button>
+    <button class="chip" data-sec="app" onclick="filterSection('app')">Барномаҳо</button>
+    <button class="chip" data-sec="game" onclick="filterSection('game')">Бозиҳо</button>
+    <button class="chip" data-sec="moding" onclick="filterSection('moding')">MODING</button>
+  </div>
+
+  <button class="btn" style="width:100%; margin-bottom:16px;" onclick="openForm(null)">+ Барномаи нав</button>
+
+  <div id="adminList"></div>
+</div>
+
+<!-- FORM MODAL -->
+<div id="formModal" style="display:none; position:fixed; inset:0; z-index:100; background:var(--bg-0); overflow-y:auto;">
+  <div style="max-width:480px; margin:0 auto; padding:20px 16px 60px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+      <h2 class="glow-text" style="font-size:18px; margin:0;" id="formTitle">Барномаи нав</h2>
+      <button class="chip" onclick="closeForm()">✕</button>
+    </div>
+    <form id="appForm" onsubmit="return saveApp(event)">
+      <input type="hidden" id="f_id">
+
+      <label class="field-label">Бахш *</label>
+      <select id="f_section" class="input" style="margin-bottom:14px;">
+        <option value="app">📦 Барнома</option>
+        <option value="game">🎮 Бозӣ</option>
+        <option value="moding">🛠️ MODING</option>
+      </select>
+
+      <label class="field-label">Ном (тоҷикӣ) *</label>
+      <input id="f_name_tj" class="input" style="margin-bottom:14px;" required>
+
+      <label class="field-label">Ном (русӣ)</label>
+      <input id="f_name_ru" class="input" style="margin-bottom:14px;">
+
+      <label class="field-label">Тавсиф (тоҷикӣ)</label>
+      <textarea id="f_desc_tj" class="input" rows="3" style="margin-bottom:14px;"></textarea>
+
+      <label class="field-label">Тавсиф (русӣ)</label>
+      <textarea id="f_desc_ru" class="input" rows="3" style="margin-bottom:14px;"></textarea>
+
+      <label class="field-label">Категория (масалан: Игры, Инструменты)</label>
+      <input id="f_category" class="input" style="margin-bottom:14px;">
+
+      <label class="field-label">Тегҳо (бо вергул ҷудо)</label>
+      <input id="f_tags" class="input" placeholder="vpn, free, fast" style="margin-bottom:14px;">
+
+      <label class="field-label">Иконка — URL</label>
+      <input id="f_icon" class="input" style="margin-bottom:14px;">
+
+      <label class="field-label">Скриншотҳо — URL (ҳар як дар сатри нав)</label>
+      <textarea id="f_screens" class="input" rows="3" style="margin-bottom:14px;"></textarea>
+
+      <label class="field-label">Трейлер — Embed code (иframe)</label>
+      <textarea id="f_trailer" class="input" rows="3" placeholder='&lt;iframe src="https://www.youtube.com/embed/..."&gt;&lt;/iframe&gt;' style="margin-bottom:14px;"></textarea>
+
+      <label class="field-label">Линки зеркашӣ (бевосита) *</label>
+      <input id="f_download" class="input" style="margin-bottom:14px;" required>
+
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label">Версия</label>
+          <input id="f_version" class="input" style="margin-bottom:14px;">
+        </div>
+        <div style="flex:1;">
+          <label class="field-label">Ҳаҷм (MB)</label>
+          <input id="f_size" type="number" class="input" style="margin-bottom:14px;">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label">Android минимум</label>
+          <input id="f_android" class="input" placeholder="7.0" style="margin-bottom:14px;">
+        </div>
+        <div style="flex:1;">
+          <label class="field-label">Девелопер</label>
+          <input id="f_dev" class="input" style="margin-bottom:14px;">
+        </div>
+      </div>
+
+      <label class="field-label">Changelog</label>
+      <textarea id="f_changelog" class="input" rows="2" style="margin-bottom:14px;"></textarea>
+
+      <label class="field-label">SEO Title</label>
+      <input id="f_seo_title" class="input" style="margin-bottom:14px;">
+      <label class="field-label">SEO Description</label>
+      <textarea id="f_seo_desc" class="input" rows="2" style="margin-bottom:14px;"></textarea>
+
+      <div style="display:flex; gap:20px; margin:16px 0;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+          <input type="checkbox" id="f_featured"> Featured ⭐
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px;">
+          <input type="checkbox" id="f_published"> Нашр кардан 🌐
+        </label>
+      </div>
+
+      <button class="btn" type="submit" style="width:100%;">Захира кардан</button>
+      <button type="button" class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="deleteApp()" id="deleteBtn">🗑 Нест кардан</button>
+    </form>
+  </div>
+</div>
+
+<script src="../frontend/assets/supabase-client.js"></script>
+<script>
+let adminLang = "tj";
+let currentSection = "all";
+let cachedApps = [];
+
+function toggleAdminLang(){
+  adminLang = adminLang === "tj" ? "ru" : "tj";
+  document.getElementById("adminLangBtn").textContent = adminLang === "tj" ? "RU" : "TJ";
+  renderList();
+}
+
+// ---------- AUTH ----------
+async function login(){
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  const errEl = document.getElementById("loginErr");
+  if (error){ errEl.textContent = "Email ё парол хато аст"; return; }
+  errEl.textContent = "";
+  showDashboard();
+}
+async function logout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+async function checkSession(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (session) showDashboard();
+}
+function showDashboard(){
+  document.getElementById("loginView").style.display = "none";
+  document.getElementById("dashView").style.display = "block";
+  loadAll();
+}
+
+// ---------- DATA ----------
+async function loadAll(){
+  const { data, error } = await sb.from("apps").select("*").order("created_at", { ascending:false });
+  if (error){ console.error(error); return; }
+  cachedApps = data || [];
+  renderStats();
+  renderList();
+}
+
+function renderStats(){
+  const total = cachedApps.length;
+  const published = cachedApps.filter(a=>a.published).length;
+  const downloads = cachedApps.reduce((s,a)=>s+(a.downloads_count||0),0);
+  document.getElementById("statsRow").innerHTML = `
+    <div class="panel" style="padding:14px; text-align:center;"><div class="aurora-text" style="font-size:22px;">${total}</div><div style="font-size:11px; color:var(--text-dim);">Ҳама</div></div>
+    <div class="panel" style="padding:14px; text-align:center;"><div class="aurora-text" style="font-size:22px;">${published}</div><div style="font-size:11px; color:var(--text-dim);">Нашршуда</div></div>
+    <div class="panel" style="padding:14px; text-align:center;"><div class="aurora-text" style="font-size:22px;">${downloads}</div><div style="font-size:11px; color:var(--text-dim);">Зеркашӣ</div></div>
+  `;
+}
+
+function filterSection(sec){
+  currentSection = sec;
+  document.querySelectorAll("[data-sec]").forEach(b=>b.classList.toggle("active", b.dataset.sec===sec));
+  renderList();
+}
+
+function renderList(){
+  let list = currentSection === "all" ? cachedApps : cachedApps.filter(a=>a.section===currentSection);
+  const el = document.getElementById("adminList");
+  if (!list.length){ el.innerHTML = `<p style="color:var(--text-dim); text-align:center; padding:30px 0;">Холӣ</p>`; return; }
+  el.innerHTML = list.map(a => `
+    <div class="panel app-card" onclick='openForm(${JSON.stringify(a).replace(/'/g,"&#39;")})' style="cursor:pointer;">
+      <img class="app-icon" src="${a.icon_url || 'https://placehold.co/112x112/14141d/9a9aab?text=Z'}">
+      <div class="app-info">
+        <p class="app-name">${adminLang==='tj'?a.name_tj:(a.name_ru||a.name_tj)}</p>
+        <div class="app-meta">
+          <span class="chip" style="padding:2px 8px; font-size:10px;">${a.section}</span>
+          <span>${a.published ? '🌐 нашршуда' : '📝 draft'}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ---------- FORM ----------
+function openForm(app){
+  document.getElementById("formModal").style.display = "block";
+  document.getElementById("formTitle").textContent = app ? "Таҳрир кардан" : "Барномаи нав";
+  document.getElementById("deleteBtn").style.display = app ? "block" : "none";
+
+  document.getElementById("f_id").value = app?.id || "";
+  document.getElementById("f_section").value = app?.section || "app";
+  document.getElementById("f_name_tj").value = app?.name_tj || "";
+  document.getElementById("f_name_ru").value = app?.name_ru || "";
+  document.getElementById("f_desc_tj").value = app?.description_tj || "";
+  document.getElementById("f_desc_ru").value = app?.description_ru || "";
+  document.getElementById("f_category").value = app?.category || "";
+  document.getElementById("f_tags").value = (app?.tags||[]).join(", ");
+  document.getElementById("f_icon").value = app?.icon_url || "";
+  document.getElementById("f_screens").value = (app?.screenshots||[]).join("\n");
+  document.getElementById("f_trailer").value = app?.trailer_embed || "";
+  document.getElementById("f_download").value = app?.download_url || "";
+  document.getElementById("f_version").value = app?.version || "";
+  document.getElementById("f_size").value = app?.size_mb || "";
+  document.getElementById("f_android").value = app?.min_android || "";
+  document.getElementById("f_dev").value = app?.developer || "";
+  document.getElementById("f_changelog").value = app?.changelog || "";
+  document.getElementById("f_seo_title").value = app?.seo_title || "";
+  document.getElementById("f_seo_desc").value = app?.seo_description || "";
+  document.getElementById("f_featured").checked = !!app?.featured;
+  document.getElementById("f_published").checked = !!app?.published;
+}
+function closeForm(){ document.getElementById("formModal").style.display = "none"; }
+
+async function saveApp(e){
+  e.preventDefault();
+  const id = document.getElementById("f_id").value;
+  const payload = {
+    section: document.getElementById("f_section").value,
+    name_tj: document.getElementById("f_name_tj").value,
+    name_ru: document.getElementById("f_name_ru").value,
+    description_tj: document.getElementById("f_desc_tj").value,
+    description_ru: document.getElementById("f_desc_ru").value,
+    category: document.getElementById("f_category").value,
+    tags: document.getElementById("f_tags").value.split(",").map(s=>s.trim()).filter(Boolean),
+    icon_url: document.getElementById("f_icon").value,
+    screenshots: document.getElementById("f_screens").value.split("\n").map(s=>s.trim()).filter(Boolean),
+    trailer_embed: document.getElementById("f_trailer").value,
+    download_url: document.getElementById("f_download").value,
+    version: document.getElementById("f_version").value,
+    size_mb: parseFloat(document.getElementById("f_size").value) || null,
+    min_android: document.getElementById("f_android").value,
+    developer: document.getElementById("f_dev").value,
+    changelog: document.getElementById("f_changelog").value,
+    seo_title: document.getElementById("f_seo_title").value,
+    seo_description: document.getElementById("f_seo_desc").value,
+    featured: document.getElementById("f_featured").checked,
+    published: document.getElementById("f_published").checked,
+  };
+
+  let error;
+  if (id){
+    ({ error } = await sb.from("apps").update(payload).eq("id", id));
+  } else {
+    ({ error } = await sb.from("apps").insert(payload));
+  }
+  if (error){ alert("Хато: " + error.message); return false; }
+  closeForm();
+  loadAll();
+  return false;
+}
+
+async function deleteApp(){
+  const id = document.getElementById("f_id").value;
+  if (!id) return;
+  if (!confirm("Мутмаин ҳастӣ?")) return;
+  const { error } = await sb.from("apps").delete().eq("id", id);
+  if (error){ alert("Хато: " + error.message); return; }
+  closeForm();
+  loadAll();
+}
+
+checkSession();
+</script>
+</body>
+</html>
