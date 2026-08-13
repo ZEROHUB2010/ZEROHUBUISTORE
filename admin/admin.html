@@ -42,9 +42,9 @@
   <p class="login-sub">Панели идоракунӣ · Танҳо барои соҳиб</p>
   <div class="panel" style="padding:26px;">
     <label class="field-label">Email</label>
-    <input id="email" class="input" type="email" placeholder="you@email.com" style="margin-bottom:16px;">
+    <input id="email" class="input" type="email" placeholder="you@email.com" style="margin-bottom:16px;" autocomplete="username">
     <label class="field-label">Парол</label>
-    <input id="password" class="input" type="password" placeholder="••••••••" style="margin-bottom:20px;">
+    <input id="password" class="input" type="password" placeholder="••••••••" style="margin-bottom:20px;" autocomplete="current-password">
     <button class="btn" style="width:100%;" onclick="login()">Воридшавӣ</button>
     <p class="err" id="loginErr"></p>
   </div>
@@ -181,14 +181,13 @@ function toggleAdminLang(){
 }
 
 // ---------- AUTH ----------
-async function login(){
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  const errEl = document.getElementById("loginErr");
-  if (error){ errEl.textContent = "Email ё парол хато аст"; return; }
-  errEl.textContent = "";
-  showDashboard();
+const ALLOWED_EMAIL = "azizzodavalijon2010@gmail.com"; // ⚠️ танҳо ин email иҷозат дорад
+
+async function loginWithGoogle(){
+  await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.href }
+  });
 }
 async function logout(){
   await sb.auth.signOut();
@@ -196,7 +195,15 @@ async function logout(){
 }
 async function checkSession(){
   const { data:{ session } } = await sb.auth.getSession();
-  if (session) showDashboard();
+  const errEl = document.getElementById("loginErr");
+  if (session){
+    if (session.user.email !== ALLOWED_EMAIL){
+      errEl.textContent = "⛔ Танҳо соҳиби сомона иҷозати воридшавӣ дорад";
+      await sb.auth.signOut();
+      return;
+    }
+    showDashboard();
+  }
 }
 function showDashboard(){
   document.getElementById("loginView").style.display = "none";
