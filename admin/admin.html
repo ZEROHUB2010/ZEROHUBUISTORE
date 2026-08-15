@@ -45,7 +45,7 @@
     <input id="email" class="input" type="email" placeholder="you@email.com" style="margin-bottom:16px;" autocomplete="username">
     <label class="field-label">Парол</label>
     <input id="password" class="input" type="password" placeholder="••••••••" style="margin-bottom:20px;" autocomplete="current-password">
-    <button class="btn" style="width:100%;" onclick="login()">Воридшавӣ</button>
+    <button type="button" class="btn" style="width:100%;" onclick="login()">Воридшавӣ</button>
     <p class="err" id="loginErr"></p>
   </div>
 </div>
@@ -181,29 +181,38 @@ function toggleAdminLang(){
 }
 
 // ---------- AUTH ----------
-const ALLOWED_EMAIL = "azizzodavalijon2010@gmail.com"; // ⚠️ танҳо ин email иҷозат дорад
-
-async function loginWithGoogle(){
-  await sb.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: window.location.href }
-  });
+async function login(){
+  const errEl = document.getElementById("loginErr");
+  try {
+    if (typeof sb === "undefined" || !sb){
+      errEl.textContent = "⚠️ Supabase бор нашуд. Интернетро санҷ ва саҳифаро нав кун.";
+      return;
+    }
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    if (!email || !password){
+      errEl.textContent = "Email ва паролро пур кун";
+      return;
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error){ errEl.textContent = "Хато: " + error.message; return; }
+    errEl.textContent = "";
+    showDashboard();
+  } catch (e) {
+    errEl.textContent = "Хатои JS: " + e.message;
+    console.error(e);
+  }
 }
 async function logout(){
   await sb.auth.signOut();
   location.reload();
 }
 async function checkSession(){
-  const { data:{ session } } = await sb.auth.getSession();
-  const errEl = document.getElementById("loginErr");
-  if (session){
-    if (session.user.email !== ALLOWED_EMAIL){
-      errEl.textContent = "⛔ Танҳо соҳиби сомона иҷозати воридшавӣ дорад";
-      await sb.auth.signOut();
-      return;
-    }
-    showDashboard();
-  }
+  try {
+    if (typeof sb === "undefined" || !sb) return;
+    const { data:{ session } } = await sb.auth.getSession();
+    if (session) showDashboard();
+  } catch(e){ console.error(e); }
 }
 function showDashboard(){
   document.getElementById("loginView").style.display = "none";
